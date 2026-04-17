@@ -121,9 +121,12 @@ export function GatekeeperPage() {
         stationSecret: stationConfig.stationSecret
       });
       if (cancelled) return;
-      if (resp.data && typeof resp.data.free_access === "boolean" && resp.data.free_access !== stationConfig.freeAccess) {
-        const updated = await window.workstation.saveStationConfig({ freeAccess: resp.data.free_access });
-        useAppStore.getState().setStationConfig(updated);
+      if (resp.data && typeof resp.data.free_access === "boolean") {
+        const current = useAppStore.getState().stationConfig;
+        if (current && current.freeAccess !== resp.data.free_access) {
+          const updated = await window.workstation.saveStationConfig({ freeAccess: resp.data.free_access });
+          useAppStore.getState().setStationConfig(updated);
+        }
       }
       if (resp.data && resp.data.paired === false) {
         // End any live session locally; the station secret has just been

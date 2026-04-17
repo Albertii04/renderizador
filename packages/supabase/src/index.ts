@@ -82,7 +82,7 @@ export async function fetchMemberships(client: SupabaseClient<Database>) {
 }
 
 export async function fetchStations(client: SupabaseClient<Database>) {
-  return client.from("stations").select("*").eq("enabled", true).order("name");
+  return client.from("stations").select("*").order("name");
 }
 
 export async function fetchStationCatalog(client: SupabaseClient<Database>) {
