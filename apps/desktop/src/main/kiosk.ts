@@ -133,7 +133,11 @@ function rebuildTrayMenu(win: BrowserWindow): void {
   // No "Salir" option on purpose: the station process must stay alive.
   // Quit is only possible from the Settings page (gated by the station admin).
   tray.setContextMenu(
-    Menu.buildFromTemplate([{ label: "Mostrar estación", click: () => showFromTray(win) }])
+    Menu.buildFromTemplate([
+      { label: `Renderizador v${app.getVersion()}`, enabled: false },
+      { type: "separator" },
+      { label: "Mostrar estación", click: () => showFromTray(win) }
+    ])
   );
 }
 
