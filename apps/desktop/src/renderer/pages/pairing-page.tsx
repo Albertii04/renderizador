@@ -41,6 +41,7 @@ export function PairingPage() {
       stationName: data.station_name,
       organizationId: data.organization_id,
       stationSecret: data.station_secret,
+      freeAccess: Boolean(data.free_access),
       instructions: typeof metadata.instructions === "string" ? metadata.instructions : "",
       d5ExecutablePath: typeof metadata.d5ExecutablePath === "string" ? metadata.d5ExecutablePath : "",
       rdpCommand: typeof metadata.rdpCommand === "string" ? metadata.rdpCommand : "",

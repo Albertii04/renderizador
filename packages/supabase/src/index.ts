@@ -279,7 +279,7 @@ export async function checkStationPairing(
     station_uuid: input.stationId,
     station_secret_input: input.stationSecret
   } as never) as unknown as {
-    data: { paired: boolean; reason?: string } | null;
+    data: { paired: boolean; reason?: string; free_access?: boolean } | null;
     error: { message: string } | null;
   };
 }
@@ -293,6 +293,7 @@ export async function claimStationPairing(client: SupabaseClient<Database>, code
       station_name: string;
       organization_id: string;
       station_secret: string;
+      free_access: boolean;
       metadata: Record<string, unknown> | null;
     } | null;
     error: { message: string } | null;
@@ -309,6 +310,7 @@ export async function createStation(
     stationCode: string;
     location?: string | null;
     enabled?: boolean;
+    freeAccess?: boolean;
     instructions?: string;
     d5ExecutablePath?: string;
     rdpCommand?: string;
@@ -326,6 +328,7 @@ export async function createStation(
     station_code: input.stationCode,
     location: input.location ?? null,
     enabled: input.enabled ?? true,
+    free_access: input.freeAccess ?? false,
     metadata: {
       instructions: input.instructions ?? "",
       d5ExecutablePath: input.d5ExecutablePath ?? "",
@@ -349,6 +352,7 @@ export async function updateStation(
     stationCode?: string;
     location?: string | null;
     enabled?: boolean;
+    freeAccess?: boolean;
     instructions?: string;
     d5ExecutablePath?: string;
     rdpCommand?: string;
@@ -374,6 +378,7 @@ export async function updateStation(
   if (input.stationCode !== undefined) updatePayload.station_code = input.stationCode;
   if (input.location !== undefined) updatePayload.location = input.location;
   if (input.enabled !== undefined) updatePayload.enabled = input.enabled;
+  if (input.freeAccess !== undefined) updatePayload.free_access = input.freeAccess;
   if (Object.keys(metadataUpdates).length > 0) {
     const current = await client.from("stations").select("metadata").eq("id", input.id).single();
     updatePayload.metadata = {
@@ -456,6 +461,7 @@ export function mapStation(row: StationRow): StationSummary {
     stationCode: row.station_code,
     location: row.location,
     enabled: row.enabled,
+    freeAccess: row.free_access ?? false,
     releaseChannel: ((metadata.releaseChannel as "stable" | "beta" | undefined) ?? "stable"),
     instructions: typeof metadata.instructions === "string" ? metadata.instructions : "",
     d5ExecutablePath: typeof metadata.d5ExecutablePath === "string" ? metadata.d5ExecutablePath : undefined,

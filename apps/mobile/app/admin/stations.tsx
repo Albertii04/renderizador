@@ -22,6 +22,7 @@ interface FormState {
   rdpWindowsUsername: string;
   rdpWindowsPassword: string;
   enabled: boolean;
+  freeAccess: boolean;
   releaseChannelId: string | null;
   pairedAt: string | null;
 }
@@ -30,7 +31,7 @@ const emptyForm: FormState = {
   id: null, name: "", stationCode: "", location: "", instructions: "",
   d5ExecutablePath: "", rdpCommand: "", rdpHost: "",
   rdpWindowsUsername: "", rdpWindowsPassword: "",
-  enabled: true, releaseChannelId: null, pairedAt: null,
+  enabled: true, freeAccess: false, releaseChannelId: null, pairedAt: null,
 };
 
 export default function AdminStationsScreen() {
@@ -77,6 +78,7 @@ export default function AdminStationsScreen() {
       rdpWindowsUsername: s.rdpWindowsUsername ?? "",
       rdpWindowsPassword: s.rdpWindowsPassword ?? "",
       enabled: s.enabled,
+      freeAccess: s.freeAccess,
       releaseChannelId: releaseChannels.find((ch) => ch.name === s.releaseChannel)?.id ?? null,
       pairedAt: s.pairedAt ?? null,
     });
@@ -106,7 +108,7 @@ export default function AdminStationsScreen() {
     };
     setBusy(true);
     const resp = form.id
-      ? await updateStation({ id: form.id, enabled: form.enabled, ...payload })
+      ? await updateStation({ id: form.id, enabled: form.enabled, freeAccess: form.freeAccess, ...payload })
       : await createStation({ organizationId, ...payload });
     setBusy(false);
     if (!resp.ok) { Alert.alert("Error", resp.message ?? "No se pudo guardar."); return; }
@@ -286,19 +288,34 @@ export default function AdminStationsScreen() {
             )}
 
             {form.id && (
-              <Card style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 14 }}>
-                <View>
-                  <Text style={{ color: c.text, fontWeight: "600" }}>Activa</Text>
-                  <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>Usuarios pueden reservarla</Text>
-                </View>
-                <Switch
-                  value={form.enabled}
-                  onValueChange={(v) => set("enabled", v)}
-                  trackColor={{ false: c.border, true: c.primary }}
-                  thumbColor={Platform.OS === "android" ? (form.enabled ? c.white : c.muted) : undefined}
-                  ios_backgroundColor={c.border}
-                />
-              </Card>
+              <>
+                <Card style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 14 }}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={{ color: c.text, fontWeight: "600" }}>Reservable</Text>
+                    <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>Usuarios pueden reservarla</Text>
+                  </View>
+                  <Switch
+                    value={form.enabled}
+                    onValueChange={(v) => set("enabled", v)}
+                    trackColor={{ false: c.border, true: c.primary }}
+                    thumbColor={Platform.OS === "android" ? (form.enabled ? c.white : c.muted) : undefined}
+                    ios_backgroundColor={c.border}
+                  />
+                </Card>
+                <Card style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 14 }}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={{ color: c.text, fontWeight: "600" }}>Acceso libre</Text>
+                    <Text style={{ color: c.muted, fontSize: 12, marginTop: 2 }}>Desactiva kiosko y código de acceso. Para pruebas de admin.</Text>
+                  </View>
+                  <Switch
+                    value={form.freeAccess}
+                    onValueChange={(v) => set("freeAccess", v)}
+                    trackColor={{ false: c.border, true: c.danger }}
+                    thumbColor={Platform.OS === "android" ? (form.freeAccess ? c.white : c.muted) : undefined}
+                    ios_backgroundColor={c.border}
+                  />
+                </Card>
+              </>
             )}
 
             <Text style={{ color: c.muted, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase", marginTop: 4 }}>RDP</Text>

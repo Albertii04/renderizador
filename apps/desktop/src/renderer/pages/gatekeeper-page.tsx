@@ -37,7 +37,17 @@ export function GatekeeperPage() {
   // Lock the app as fullscreen kiosk whenever we're idle (no active session).
   // When a session starts we unlock and hide to tray so the worker can use RDP.
   // When it ends we re-lock on the full screen.
+  // When the station is in free-access mode (admin testing), never lock: stay
+  // unlocked and hidden to tray so the OS is freely usable as if the app
+  // wasn't installed.
   useEffect(() => {
+    if (stationConfig?.freeAccess) {
+      void (async () => {
+        await window.workstation.unlockKiosk();
+        await window.workstation.hideToTray();
+      })();
+      return;
+    }
     if (session) {
       void (async () => {
         await window.workstation.unlockKiosk();
@@ -46,7 +56,7 @@ export function GatekeeperPage() {
     } else {
       void window.workstation.lockKiosk();
     }
-  }, [session]);
+  }, [session, stationConfig?.freeAccess]);
 
   // Main process emits `kiosk:force-relock` on OS-level session events (screen
   // unlock/lock, resume from sleep, user became active). On Windows, an RDP
@@ -111,6 +121,10 @@ export function GatekeeperPage() {
         stationSecret: stationConfig.stationSecret
       });
       if (cancelled) return;
+      if (resp.data && typeof resp.data.free_access === "boolean" && resp.data.free_access !== stationConfig.freeAccess) {
+        const updated = await window.workstation.saveStationConfig({ freeAccess: resp.data.free_access });
+        useAppStore.getState().setStationConfig(updated);
+      }
       if (resp.data && resp.data.paired === false) {
         // End any live session locally; the station secret has just been
         // rotated server-side so end_station_session would fail anyway, but
@@ -124,7 +138,7 @@ export function GatekeeperPage() {
         const config = await window.workstation.saveStationConfig({
           stationId: "", stationCode: "", stationName: "", organizationId: "",
           stationSecret: "", rdpHost: "", rdpWindowsUsername: "", rdpWindowsPassword: "",
-          instructions: "", d5ExecutablePath: "", rdpCommand: ""
+          instructions: "", d5ExecutablePath: "", rdpCommand: "", freeAccess: false
         });
         useAppStore.getState().setStationConfig(config);
         setScreen("pairing");

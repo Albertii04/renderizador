@@ -102,6 +102,7 @@ interface AppContextValue {
     stationCode?: string;
     location?: string | null;
     enabled?: boolean;
+    freeAccess?: boolean;
     instructions?: string;
     d5ExecutablePath?: string;
     rdpCommand?: string;

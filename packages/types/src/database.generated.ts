@@ -559,6 +559,7 @@ export type Database = {
         Row: {
           created_at: string
           enabled: boolean
+          free_access: boolean
           id: string
           location: string | null
           metadata: Json
@@ -575,6 +576,7 @@ export type Database = {
         Insert: {
           created_at?: string
           enabled?: boolean
+          free_access?: boolean
           id?: string
           location?: string | null
           metadata?: Json
@@ -591,6 +593,7 @@ export type Database = {
         Update: {
           created_at?: string
           enabled?: boolean
+          free_access?: boolean
           id?: string
           location?: string | null
           metadata?: Json
@@ -831,6 +834,7 @@ export type Database = {
         Returns: {
           created_at: string
           enabled: boolean
+          free_access: boolean
           id: string
           location: string | null
           metadata: Json

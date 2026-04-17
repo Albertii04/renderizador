@@ -20,6 +20,7 @@ export interface StationConfig {
   rdpHost: string;
   rdpWindowsUsername: string;
   rdpWindowsPassword: string;
+  freeAccess: boolean;
 }
 
 export interface StationConfigInput extends Partial<StationConfig> {}
@@ -31,6 +32,7 @@ export interface StationSummary {
   stationCode: string;
   location: string | null;
   enabled: boolean;
+  freeAccess: boolean;
   releaseChannel: "stable" | "beta";
   instructions: string;
   d5ExecutablePath?: string;

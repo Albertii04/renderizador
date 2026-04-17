@@ -16,7 +16,8 @@ const defaultConfig: StationConfig = {
   mode: "",
   rdpHost: "",
   rdpWindowsUsername: "",
-  rdpWindowsPassword: ""
+  rdpWindowsPassword: "",
+  freeAccess: false
 };
 
 type PublicStationConfig = Omit<StationConfig, "stationSecret" | "rdpWindowsPassword">;
@@ -33,7 +34,8 @@ const defaultPublicConfig: PublicStationConfig = {
   rdpCommand: "",
   mode: "",
   rdpHost: "",
-  rdpWindowsUsername: ""
+  rdpWindowsUsername: "",
+  freeAccess: false
 };
 
 const defaultSecureConfig: SecureStationConfig = {
@@ -122,6 +124,7 @@ export async function writeStationConfig(input: StationConfigInput): Promise<Sta
     mode: nextConfig.mode,
     rdpHost: nextConfig.rdpHost,
     rdpWindowsUsername: nextConfig.rdpWindowsUsername,
+    freeAccess: nextConfig.freeAccess,
   };
   const secureConfig = {
     stationSecret: encryptSecret(nextConfig.stationSecret),
