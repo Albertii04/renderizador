@@ -119,6 +119,7 @@ function createWindow() {
     lockKiosk(mainWindow);
   };
   powerMonitor.on("unlock-screen", forceRelock);
+  powerMonitor.on("lock-screen", forceRelock);
   powerMonitor.on("resume", forceRelock);
   powerMonitor.on("user-did-become-active", forceRelock);
   mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedUrl) => {

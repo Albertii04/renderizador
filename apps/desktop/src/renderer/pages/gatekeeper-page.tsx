@@ -49,9 +49,10 @@ export function GatekeeperPage() {
   }, [session]);
 
   // Main process emits `kiosk:force-relock` on OS-level session events (screen
-  // unlock, resume from sleep, user became active). Always terminate any live
-  // Supabase session and bring the fullscreen code prompt back so the next
-  // worker has to re-authenticate.
+  // unlock/lock, resume from sleep, user became active). On Windows, an RDP
+  // disconnect triggers the same `lock-screen` event that Win+L does, so this
+  // also covers remote-desktop disconnects. Always terminate any live Supabase
+  // session and bring the fullscreen code prompt back.
   useEffect(() => {
     const off = window.workstation.onForceRelock(() => {
       void (async () => {
@@ -69,6 +70,35 @@ export function GatekeeperPage() {
     });
     return off;
   }, [setSession, stationConfig?.stationSecret]);
+
+  // Cross-check: while we believe a session is active, poll Supabase every 10
+  // seconds. If the backend says the session is gone (admin revoked, expiry
+  // RPC, another process ended it) force the kiosk back to the locked state.
+  useEffect(() => {
+    if (!session || !supabase || !stationConfig?.stationId) return;
+    let cancelled = false;
+    const check = async () => {
+      if (!supabase || !stationConfig?.stationId) return;
+      const resp = await fetchActiveStationSession(
+        supabase,
+        stationConfig.stationId,
+        stationConfig.stationSecret
+      );
+      if (cancelled) return;
+      if (!resp.data) {
+        setSession(null);
+        setCodeInput("");
+        setMessage(null);
+        await window.workstation.showWindow();
+        await window.workstation.lockKiosk();
+      }
+    };
+    const timer = window.setInterval(() => void check(), 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [session, stationConfig?.stationId, stationConfig?.stationSecret, setSession]);
 
   // Poll remote pairing state; if admin unpaired from mobile, wipe local config and return to pairing.
   useEffect(() => {

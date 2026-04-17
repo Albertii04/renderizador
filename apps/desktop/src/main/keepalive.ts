@@ -64,60 +64,53 @@ async function installLaunchAgent(): Promise<void> {
 
 async function installScheduledTask(): Promise<void> {
   const exec = process.execPath;
-  // Two triggers: at logon AND every 2 minutes. The app's single-instance lock
-  // means an already-running station just refocuses and exits; if dead, a new
-  // instance boots. No admin rights required.
-  const xml = `<?xml version="1.0" encoding="UTF-16"?>
-<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
-  <RegistrationInfo>
-    <Description>Keeps Renderizador Station running.</Description>
-  </RegistrationInfo>
-  <Triggers>
-    <LogonTrigger>
-      <Enabled>true</Enabled>
-    </LogonTrigger>
-    <TimeTrigger>
-      <Repetition>
-        <Interval>PT2M</Interval>
-        <StopAtDurationEnd>false</StopAtDurationEnd>
-      </Repetition>
-      <StartBoundary>2020-01-01T00:00:00</StartBoundary>
-      <Enabled>true</Enabled>
-    </TimeTrigger>
-  </Triggers>
-  <Settings>
-    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
-    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
-    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
-    <AllowHardTerminate>false</AllowHardTerminate>
-    <StartWhenAvailable>true</StartWhenAvailable>
-    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
-    <Hidden>true</Hidden>
-    <RunOnlyIfIdle>false</RunOnlyIfIdle>
-    <WakeToRun>false</WakeToRun>
-    <Enabled>true</Enabled>
-  </Settings>
-  <Actions>
-    <Exec>
-      <Command>${escapeXml(exec)}</Command>
-    </Exec>
-  </Actions>
-</Task>
-`;
+  const logPath = join(app.getPath("userData"), "keepalive-install.log");
 
-  const xmlPath = join(app.getPath("temp"), "renderizador-keepalive.xml");
-  await writeFile(xmlPath, "\ufeff" + xml, "utf16le");
+  const runSchtasks = (args: string[]) =>
+    new Promise<{ code: number | null; stdout: string; stderr: string }>((resolveRun) => {
+      const child = spawn("schtasks", args, {
+        stdio: ["ignore", "pipe", "pipe"],
+        windowsHide: true
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout?.on("data", (chunk: Buffer) => (stdout += chunk.toString()));
+      child.stderr?.on("data", (chunk: Buffer) => (stderr += chunk.toString()));
+      child.on("error", (error) => resolveRun({ code: -1, stdout, stderr: stderr + String(error) }));
+      child.on("close", (code) => resolveRun({ code, stdout, stderr }));
+    });
 
-  spawn("schtasks", ["/Create", "/TN", WIN_TASK_NAME, "/XML", xmlPath, "/F"], {
-    stdio: "ignore",
-    windowsHide: true
-  }).on("error", () => undefined);
-}
+  // The app's single-instance lock dedupes overlapping launches, so running
+  // schtasks every minute is safe: if the station is already up the new
+  // invocation just refocuses and exits, and if it's dead a new instance
+  // boots. No admin rights required.
+  const minuteTask = await runSchtasks([
+    "/Create",
+    "/SC", "MINUTE",
+    "/MO", "1",
+    "/TN", WIN_TASK_NAME,
+    "/TR", `"${exec}"`,
+    "/F"
+  ]);
 
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+  // Second task: on every logon, as a belt-and-suspenders guard for reboots
+  // where the minute timer hasn't fired yet.
+  const logonTask = await runSchtasks([
+    "/Create",
+    "/SC", "ONLOGON",
+    "/TN", `${WIN_TASK_NAME}Logon`,
+    "/TR", `"${exec}"`,
+    "/F"
+  ]);
+
+  const summary =
+    `[${new Date().toISOString()}] exec=${exec}\n` +
+    `minute: exit=${minuteTask.code} stdout=${minuteTask.stdout.trim()} stderr=${minuteTask.stderr.trim()}\n` +
+    `logon: exit=${logonTask.code} stdout=${logonTask.stdout.trim()} stderr=${logonTask.stderr.trim()}\n\n`;
+
+  try {
+    await writeFile(logPath, summary, { flag: "a" });
+  } catch {
+    // log write failures are not fatal
+  }
 }
