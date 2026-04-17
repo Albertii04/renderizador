@@ -15,9 +15,11 @@ const timer = setInterval(() => {
   } catch {
     clearInterval(timer);
     try {
-      spawn(appExec, [], { detached: true, stdio: "ignore" }).unref();
+      const env = Object.assign({}, process.env);
+      delete env.ELECTRON_RUN_AS_NODE;
+      spawn(appExec, [], { detached: true, stdio: "ignore", env }).unref();
     } catch (error) {
-      // swallow — OS restart / login item will recover
+      // swallow — OS-level keepalive will recover
     }
     process.exit(0);
   }

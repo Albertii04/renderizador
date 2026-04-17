@@ -16,6 +16,7 @@ import {
   wireKioskGuards
 } from "./kiosk.js";
 import { startWatchdog } from "./watchdog.js";
+import { installOsKeepAlive } from "./keepalive.js";
 
 let mainWindow: BrowserWindow | null = null;
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -106,6 +107,7 @@ function createWindow() {
   wireKioskGuards(mainWindow);
   createTray(mainWindow);
   void startWatchdog();
+  void installOsKeepAlive();
   mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedUrl) => {
     console.error(`[did-fail-load] ${errorCode} ${errorDescription} ${validatedUrl}`);
   });
