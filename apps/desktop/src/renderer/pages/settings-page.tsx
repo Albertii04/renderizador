@@ -22,6 +22,9 @@ export function SettingsPage() {
   }
 
   async function unpair() {
+    // Drop any live session from local state so we don't bounce back into
+    // gatekeeper if the user cancels mid-pairing.
+    useAppStore.getState().setSession(null);
     const config = await window.workstation.saveStationConfig({
       stationId: "",
       stationCode: "",
@@ -37,6 +40,8 @@ export function SettingsPage() {
     });
     setStationConfig(config);
     setScreen("pairing");
+    await window.workstation.showWindow();
+    await window.workstation.lockKiosk();
   }
 
   const back = () =>

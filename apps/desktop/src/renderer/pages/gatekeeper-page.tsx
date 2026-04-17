@@ -112,6 +112,15 @@ export function GatekeeperPage() {
       });
       if (cancelled) return;
       if (resp.data && resp.data.paired === false) {
+        // End any live session locally; the station secret has just been
+        // rotated server-side so end_station_session would fail anyway, but
+        // we clear local state for a clean pairing flow.
+        const current = useAppStore.getState().session;
+        if (current && supabase) {
+          const { endStationSession } = await import("@renderizador/supabase");
+          await endStationSession(supabase, current.id, stationConfig?.stationSecret);
+        }
+        setSession(null);
         const config = await window.workstation.saveStationConfig({
           stationId: "", stationCode: "", stationName: "", organizationId: "",
           stationSecret: "", rdpHost: "", rdpWindowsUsername: "", rdpWindowsPassword: "",
@@ -119,6 +128,10 @@ export function GatekeeperPage() {
         });
         useAppStore.getState().setStationConfig(config);
         setScreen("pairing");
+        // Make sure the operator actually sees the pairing screen even if
+        // the app was hidden in the tray during an active session.
+        await window.workstation.showWindow();
+        await window.workstation.lockKiosk();
       }
     }
     void check();
