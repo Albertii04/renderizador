@@ -8,6 +8,9 @@ const ICON_ACTIVE_DATA_URL = ICON_IDLE_DATA_URL;
 let tray: Tray | null = null;
 let kioskLocked = false;
 let allowQuit = false;
+let pendingUpdateVersion: string | null = null;
+let installUpdateHandler: (() => void) | null = null;
+let trayWindow: BrowserWindow | null = null;
 
 export function isKioskLocked(): boolean {
   return kioskLocked;
@@ -110,7 +113,14 @@ export function wireKioskGuards(win: BrowserWindow): void {
   });
 }
 
+export function setPendingUpdate(version: string | null, onInstall: (() => void) | null): void {
+  pendingUpdateVersion = version;
+  installUpdateHandler = onInstall;
+  if (trayWindow) rebuildTrayMenu(trayWindow);
+}
+
 export function createTray(win: BrowserWindow): Tray | null {
+  trayWindow = win;
   if (tray) return tray;
   const image = nativeImage.createFromDataURL(ICON_IDLE_DATA_URL);
   if (process.platform === "darwin") image.setTemplateImage(true);
@@ -132,13 +142,17 @@ function rebuildTrayMenu(win: BrowserWindow): void {
   if (!tray) return;
   // No "Salir" option on purpose: the station process must stay alive.
   // Quit is only possible from the Settings page (gated by the station admin).
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: `Renderizador v${app.getVersion()}`, enabled: false },
-      { type: "separator" },
-      { label: "Mostrar estación", click: () => showFromTray(win) }
-    ])
-  );
+  const items: Electron.MenuItemConstructorOptions[] = [
+    { label: `Renderizador v${app.getVersion()}`, enabled: false }
+  ];
+  if (pendingUpdateVersion && installUpdateHandler) {
+    items.push({
+      label: `Instalar actualización v${pendingUpdateVersion}`,
+      click: () => installUpdateHandler?.()
+    });
+  }
+  items.push({ type: "separator" }, { label: "Mostrar estación", click: () => showFromTray(win) });
+  tray.setContextMenu(Menu.buildFromTemplate(items));
 }
 
 function updateTrayState(state: "idle" | "active"): void {

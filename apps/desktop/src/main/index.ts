@@ -11,6 +11,7 @@ import {
   hideToTray,
   lockKiosk,
   setAllowQuit,
+  setPendingUpdate,
   showFromTray,
   unlockKiosk,
   wireKioskGuards
@@ -102,7 +103,16 @@ function createWindow() {
     }
   });
 
-  wireUpdater(mainWindow);
+  wireUpdater(mainWindow, (status) => {
+    if (status.status === "downloaded" && status.version) {
+      setPendingUpdate(status.version, () => {
+        setAllowQuit(true);
+        void quitAndInstall();
+      });
+    } else if (status.status === "not_available" || status.status === "error") {
+      setPendingUpdate(null, null);
+    }
+  });
   startAutoUpdateLoop();
   wireKioskGuards(mainWindow);
   createTray(mainWindow);
