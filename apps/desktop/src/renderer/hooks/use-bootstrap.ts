@@ -7,7 +7,8 @@ import {
   mapMembership,
   mapProfile,
   mapStation,
-  mapSession
+  mapSession,
+  recordStationHeartbeat
 } from "@renderizador/supabase";
 import { supabase } from "../lib/supabase";
 import { useAppStore } from "../stores/app-store";
@@ -141,4 +142,18 @@ export function useBootstrap() {
       unsubscribe();
     };
   }, [setLastActionMessage, setMembership, setProfile, setScreen, setSession, setStationConfig, setUpdateStatus]);
+
+  // Heartbeat loop: while the station is paired, ping Supabase every 30s so
+  // the mobile admin UI can show an online indicator. Fires regardless of
+  // screen (gatekeeper, client-launcher, settings) so the station is marked
+  // alive whenever the process is running.
+  const stationConfig = useAppStore((state) => state.stationConfig);
+  useEffect(() => {
+    if (!supabase || !stationConfig?.stationId || !stationConfig.stationSecret) return;
+    const ping = () =>
+      void recordStationHeartbeat(supabase!, stationConfig.stationId, stationConfig.stationSecret);
+    ping();
+    const timer = window.setInterval(ping, 30000);
+    return () => window.clearInterval(timer);
+  }, [stationConfig?.stationId, stationConfig?.stationSecret]);
 }

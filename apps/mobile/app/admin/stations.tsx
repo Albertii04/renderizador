@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppContext } from "../../src/providers/app-provider";
@@ -41,6 +41,14 @@ export default function AdminStationsScreen() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [pairing, setPairing] = useState<{ code: string; expiresAt: string; stationName: string } | null>(null);
+
+  // Re-evaluate online/offline status every 15s. The list re-renders and the
+  // green/gray dot flips when a station's last_seen_at ages past the threshold.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((v) => v + 1), 15000);
+    return () => clearInterval(timer);
+  }, []);
 
   function openNew() {
     setForm({ ...emptyForm, releaseChannelId: releaseChannels[0]?.id ?? null });
@@ -156,17 +164,39 @@ export default function AdminStationsScreen() {
             <Text style={{ color: c.primary, fontWeight: "700" }}>Nueva estación</Text>
           </Pressable>
         }
-        renderItem={({ item }) => (
-          <Card onPress={() => openEdit(item.id)}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: c.white, fontWeight: "600", fontSize: 15 }}>{item.name}</Text>
-                <Text style={{ color: c.muted, fontSize: 13, marginTop: 2 }}>{item.stationCode}{item.location ? ` · ${item.location}` : ""}</Text>
+        renderItem={({ item }) => {
+          const paired = !!item.pairedAt;
+          const lastSeen = item.lastSeenAt ? new Date(item.lastSeenAt).getTime() : 0;
+          const online = lastSeen > 0 && Date.now() - lastSeen < 120000;
+          return (
+            <Card onPress={() => openEdit(item.id)}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: c.white, fontWeight: "600", fontSize: 15 }}>{item.name}</Text>
+                  <Text style={{ color: c.muted, fontSize: 13, marginTop: 2 }}>{item.stationCode}{item.location ? ` · ${item.location}` : ""}</Text>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <View
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: online ? c.success : c.muted,
+                      }}
+                    />
+                    <Ionicons
+                      name={paired ? "link" : "unlink"}
+                      size={16}
+                      color={paired ? c.success : c.muted}
+                    />
+                  </View>
+                  <Badge label={item.enabled ? "Activa" : "Inactiva"} color={item.enabled ? c.success : c.danger} />
+                </View>
               </View>
-              <Badge label={item.enabled ? "Activa" : "Inactiva"} color={item.enabled ? c.success : c.danger} />
-            </View>
-          </Card>
-        )}
+            </Card>
+          );
+        }}
         ListEmptyComponent={<EmptyState icon="🖥️" title="Sin estaciones" subtitle="Crea la primera con el botón de arriba." />}
       />
 

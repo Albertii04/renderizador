@@ -463,8 +463,25 @@ export function mapStation(row: StationRow): StationSummary {
     rdpHost: typeof metadata.rdpHost === "string" ? metadata.rdpHost : undefined,
     rdpWindowsUsername: typeof metadata.rdpWindowsUsername === "string" ? metadata.rdpWindowsUsername : undefined,
     rdpWindowsPassword: typeof metadata.rdpWindowsPassword === "string" ? metadata.rdpWindowsPassword : undefined,
-    pairedAt: row.paired_at ?? null
+    pairedAt: row.paired_at ?? null,
+    lastSeenAt: typeof metadata.last_seen_at === "string" ? (metadata.last_seen_at as string) : null
   };
+}
+
+export async function recordStationHeartbeat(
+  client: SupabaseClient<Database>,
+  stationId: string,
+  stationSecret: string
+) {
+  // station_heartbeat was added in migration 0015 and is not yet in the
+  // generated Database type — cast until types:generate is re-run.
+  return (client.rpc as unknown as (
+    name: string,
+    args: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: unknown }>)(
+    "station_heartbeat",
+    { station_uuid: stationId, station_secret_input: stationSecret }
+  );
 }
 
 export function mapReservation(row: ReservationRow): ReservationSummary {
