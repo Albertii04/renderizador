@@ -1,0 +1,31 @@
+{
+  "name": "renderizador",
+  "private": true,
+  "packageManager": "pnpm@10.4.0",
+  "engines": {
+    "node": ">=22.6.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:login": "supabase login --token \"$SUPABASE_ACCESS_TOKEN\"",
+    "db:link": "supabase link --project-ref \"$SUPABASE_PROJECT_REF\"",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "types:generate": "supabase gen types typescript --linked --schema public > packages/types/src/database.generated.ts",
+    "autoskills": "npx autoskills"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.1",
+    "@types/node": "^22.15.17",
+    "autoskills": "^0.2.7",
+    "skills": "^1.5.0",
+    "turbo": "^2.5.0",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.31.1",
+    "vitest": "^3.1.3"
+  }
+}

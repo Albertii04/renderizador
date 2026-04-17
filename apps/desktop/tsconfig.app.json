@@ -1,0 +1,11 @@
+{
+  "extends": "@renderizador/typescript-config/react-app.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["vite/client"],
+    "paths": {
+      "@/*": ["src/renderer/*"]
+    }
+  },
+  "include": ["src/renderer"]
+}

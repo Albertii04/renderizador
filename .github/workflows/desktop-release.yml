@@ -1,0 +1,43 @@
+name: desktop-release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install deps
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build + publish Windows installer to GitHub Releases
+        run: |
+          pnpm --filter @renderizador/desktop build
+          pnpm --filter @renderizador/desktop exec electron-builder --win --publish always
+
+      - name: Upload installer as workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: renderizador-desktop-windows
+          path: apps/desktop/release/*.exe
+          if-no-files-found: error
