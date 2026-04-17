@@ -23,13 +23,14 @@ interface FormState {
   rdpWindowsPassword: string;
   enabled: boolean;
   releaseChannelId: string | null;
+  pairedAt: string | null;
 }
 
 const emptyForm: FormState = {
   id: null, name: "", stationCode: "", location: "", instructions: "",
   d5ExecutablePath: "", rdpCommand: "", rdpHost: "",
   rdpWindowsUsername: "", rdpWindowsPassword: "",
-  enabled: true, releaseChannelId: null,
+  enabled: true, releaseChannelId: null, pairedAt: null,
 };
 
 export default function AdminStationsScreen() {
@@ -62,6 +63,7 @@ export default function AdminStationsScreen() {
       rdpWindowsPassword: s.rdpWindowsPassword ?? "",
       enabled: s.enabled,
       releaseChannelId: releaseChannels.find((ch) => ch.name === s.releaseChannel)?.id ?? null,
+      pairedAt: s.pairedAt ?? null,
     });
     setOpen(true);
   }
@@ -114,6 +116,7 @@ export default function AdminStationsScreen() {
             const resp = await unpairStation(form.id!);
             setBusy(false);
             if (!resp.ok) { Alert.alert("Error", resp.message ?? "No se pudo desvincular."); return; }
+            setForm((f) => ({ ...f, pairedAt: null }));
             setOpen(false);
           }
         }
@@ -200,18 +203,25 @@ export default function AdminStationsScreen() {
                   <Ionicons name="key-outline" size={18} color={c.primary} />
                   <Text style={{ color: c.primary, fontWeight: "700" }}>Generar código de vinculación</Text>
                 </Pressable>
-                <Pressable
-                  onPress={confirmUnpair}
-                  disabled={busy}
-                  style={({ pressed }) => ({
-                    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-                    padding: 14, borderRadius: 16, borderWidth: 1, borderColor: c.danger, backgroundColor: c.danger + "1a",
-                    opacity: pressed || busy ? 0.7 : 1,
-                  })}
-                >
-                  <Ionicons name="unlink-outline" size={18} color={c.danger} />
-                  <Text style={{ color: c.danger, fontWeight: "700" }}>Desvincular estación</Text>
-                </Pressable>
+                {form.pairedAt ? (
+                  <Pressable
+                    onPress={confirmUnpair}
+                    disabled={busy}
+                    style={({ pressed }) => ({
+                      flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+                      padding: 14, borderRadius: 16, borderWidth: 1, borderColor: c.danger, backgroundColor: c.danger + "1a",
+                      opacity: pressed || busy ? 0.7 : 1,
+                    })}
+                  >
+                    <Ionicons name="unlink-outline" size={18} color={c.danger} />
+                    <Text style={{ color: c.danger, fontWeight: "700" }}>Desvincular estación</Text>
+                  </Pressable>
+                ) : (
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, padding: 10 }}>
+                    <Ionicons name="unlink" size={14} color={c.muted} />
+                    <Text style={{ color: c.muted, fontSize: 12 }}>Estación sin vincular</Text>
+                  </View>
+                )}
               </View>
             )}
 

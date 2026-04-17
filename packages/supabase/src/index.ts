@@ -462,7 +462,8 @@ export function mapStation(row: StationRow): StationSummary {
     rdpCommand: typeof metadata.rdpCommand === "string" ? metadata.rdpCommand : undefined,
     rdpHost: typeof metadata.rdpHost === "string" ? metadata.rdpHost : undefined,
     rdpWindowsUsername: typeof metadata.rdpWindowsUsername === "string" ? metadata.rdpWindowsUsername : undefined,
-    rdpWindowsPassword: typeof metadata.rdpWindowsPassword === "string" ? metadata.rdpWindowsPassword : undefined
+    rdpWindowsPassword: typeof metadata.rdpWindowsPassword === "string" ? metadata.rdpWindowsPassword : undefined,
+    pairedAt: row.paired_at ?? null
   };
 }
 

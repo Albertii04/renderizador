@@ -41,6 +41,7 @@ export interface StationSummary {
   nextReservationStartsAt?: string | null;
   nextReservationEndsAt?: string | null;
   activeSessionId?: string | null;
+  pairedAt?: string | null;
 }
 
 export interface ReservationSummary {
