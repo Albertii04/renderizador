@@ -14,6 +14,7 @@ import {
   extendStationSession,
   generateStationPairingCode as generateStationPairingCodeQuery,
   unpairStation as unpairStationQuery,
+  deleteStation as deleteStationQuery,
   fetchAccessCodes,
   fetchAllReservations,
   fetchAllSessions,
@@ -111,6 +112,7 @@ interface AppContextValue {
   }): Promise<{ ok: boolean; message?: string; stationId?: string; pairingCode?: string; pairingExpiresAt?: string }>;
   generateStationPairingCode(stationId: string): Promise<{ ok: boolean; code?: string; expiresAt?: string; message?: string }>;
   unpairStation(stationId: string): Promise<{ ok: boolean; message?: string }>;
+  deleteStation(stationId: string): Promise<{ ok: boolean; message?: string }>;
   moveReservation(input: { id: string; startsAt: string; endsAt: string; estimatedMinutes: number }): Promise<{ ok: boolean; message?: string }>;
   cancelReservation(id: string): Promise<{ ok: boolean; message?: string }>;
   createAdminAccessCode(input: { stationId: string; validFrom: string; validUntil: string; maxUses?: number }): Promise<{ ok: boolean; code?: string; message?: string }>;
@@ -394,6 +396,18 @@ export function AppProvider(props: PropsWithChildren) {
         const response = await unpairStationQuery(supabase, stationId);
         if (response.error || !response.data?.ok) {
           return { ok: false, message: response.error?.message ?? "Unable to unpair." };
+        }
+        await loadData();
+        return { ok: true };
+      },
+      async deleteStation(stationId) {
+        if (!supabase) return { ok: false, message: "Supabase client is not configured." };
+        const response = (await deleteStationQuery(supabase, stationId)) as {
+          data: { ok?: boolean } | null;
+          error: { message?: string } | null;
+        };
+        if (response.error || !response.data?.ok) {
+          return { ok: false, message: response.error?.message ?? "Unable to delete station." };
         }
         await loadData();
         return { ok: true };

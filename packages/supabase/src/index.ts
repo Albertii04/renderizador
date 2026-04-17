@@ -468,6 +468,18 @@ export function mapStation(row: StationRow): StationSummary {
   };
 }
 
+export async function deleteStation(client: SupabaseClient<Database>, stationId: string) {
+  // delete_station was added in migration 0016 and is not yet in the
+  // generated Database type — cast until types:generate is re-run.
+  return (client.rpc as unknown as (
+    name: string,
+    args: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: unknown }>)(
+    "delete_station",
+    { station_uuid: stationId }
+  );
+}
+
 export async function recordStationHeartbeat(
   client: SupabaseClient<Database>,
   stationId: string,

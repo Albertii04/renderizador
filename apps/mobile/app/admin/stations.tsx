@@ -34,7 +34,7 @@ const emptyForm: FormState = {
 };
 
 export default function AdminStationsScreen() {
-  const { memberships, stations, releaseChannels, createStation, updateStation, generateStationPairingCode, unpairStation } = useAppContext();
+  const { memberships, stations, releaseChannels, createStation, updateStation, generateStationPairingCode, unpairStation, deleteStation } = useAppContext();
   const organizationId = memberships[0]?.organizationId ?? "";
 
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -125,6 +125,28 @@ export default function AdminStationsScreen() {
             setBusy(false);
             if (!resp.ok) { Alert.alert("Error", resp.message ?? "No se pudo desvincular."); return; }
             setForm((f) => ({ ...f, pairedAt: null }));
+            setOpen(false);
+          }
+        }
+      ]
+    );
+  }
+
+  async function confirmDelete() {
+    if (!form.id) return;
+    Alert.alert(
+      "Eliminar estación",
+      "La estación y todos sus datos asociados (reservas, sesiones, códigos, historial) se borrarán permanentemente. Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            setBusy(true);
+            const resp = await deleteStation(form.id!);
+            setBusy(false);
+            if (!resp.ok) { Alert.alert("Error", resp.message ?? "No se pudo eliminar."); return; }
             setOpen(false);
           }
         }
@@ -287,6 +309,21 @@ export default function AdminStationsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={c.muted} />
             </Card>
+
+            {form.id && (
+              <Pressable
+                onPress={confirmDelete}
+                disabled={busy}
+                style={({ pressed }) => ({
+                  flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+                  padding: 14, borderRadius: 16, borderWidth: 1, borderColor: c.danger, backgroundColor: c.danger,
+                  opacity: pressed || busy ? 0.7 : 1, marginTop: 16,
+                })}
+              >
+                <Ionicons name="trash-outline" size={18} color={c.white} />
+                <Text style={{ color: c.white, fontWeight: "700" }}>Eliminar estación</Text>
+              </Pressable>
+            )}
           </ScrollView>
         </KeyboardAvoidingView>
       </BottomSheet>
