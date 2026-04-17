@@ -1,0 +1,12 @@
+{
+  "extends": "@renderizador/typescript-config/react-app.json",
+  "compilerOptions": {
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "app",
+    "src",
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Renderizador Mobile",
+    "slug": "renderizador-mobile",
+    "scheme": "renderizador",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      "@react-native-community/datetimepicker",
+      "react-native-bottom-tabs"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

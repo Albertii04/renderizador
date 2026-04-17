@@ -1,0 +1,17 @@
+{
+  "name": "@renderizador/typescript-config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./base.json": "./base.json",
+    "./react-library.json": "./react-library.json",
+    "./react-app.json": "./react-app.json",
+    "./node.json": "./node.json"
+  },
+  "files": [
+    "base.json",
+    "react-library.json",
+    "react-app.json",
+    "node.json"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "extends": "@renderizador/typescript-config/node.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "dist-electron",
+    "baseUrl": "."
+  },
+  "include": ["vite.config.ts", "src/main", "src/preload"]
+}

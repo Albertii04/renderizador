@@ -1,0 +1,18 @@
+{
+  "name": "@renderizador/types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@renderizador/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@renderizador/typescript-config": "workspace:*",
+    "typescript": "^5.8.3"
+  }
+}

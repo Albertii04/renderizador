@@ -1,0 +1,6 @@
+{
+  "extends": "./react-library.json",
+  "compilerOptions": {
+    "noEmit": true
+  }
+}

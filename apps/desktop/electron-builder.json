@@ -1,0 +1,27 @@
+{
+  "appId": "com.renderizador.desktop",
+  "productName": "Renderizador Station",
+  "files": [
+    "dist/**",
+    "dist-electron/**",
+    "package.json"
+  ],
+  "directories": {
+    "output": "release"
+  },
+  "mac": {
+    "target": ["dmg", "zip"]
+  },
+  "win": {
+    "target": ["nsis"]
+  },
+  "linux": {
+    "target": ["AppImage"]
+  },
+  "publish": {
+    "provider": "generic",
+    "url": "https://jufooheukaagcgbufsuw.supabase.co/storage/v1/object/public/desktop-releases",
+    "channel": "latest",
+    "useMultipleRangeRequest": false
+  }
+}
