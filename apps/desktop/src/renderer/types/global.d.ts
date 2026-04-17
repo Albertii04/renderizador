@@ -13,6 +13,11 @@ declare global {
       restartToUpdate(): Promise<void>;
       openExternalDocs(target: string): Promise<{ ok: boolean }>;
       onUpdateStatus(callback: (payload: UpdateStatus) => void): () => void;
+      lockKiosk(): Promise<{ ok: boolean }>;
+      unlockKiosk(): Promise<{ ok: boolean }>;
+      hideToTray(): Promise<{ ok: boolean }>;
+      showWindow(): Promise<{ ok: boolean }>;
+      allowQuit(value: boolean): Promise<{ ok: boolean }>;
     };
   }
 }

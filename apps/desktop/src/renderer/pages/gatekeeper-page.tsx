@@ -34,6 +34,20 @@ export function GatekeeperPage() {
     return () => window.clearInterval(timer);
   }, []);
 
+  // Lock the app as fullscreen kiosk whenever we're idle (no active session).
+  // When a session starts we unlock and hide to tray so the worker can use RDP.
+  // When it ends we re-lock on the full screen.
+  useEffect(() => {
+    if (session) {
+      void (async () => {
+        await window.workstation.unlockKiosk();
+        await window.workstation.hideToTray();
+      })();
+    } else {
+      void window.workstation.lockKiosk();
+    }
+  }, [session]);
+
   // Poll remote pairing state; if admin unpaired from mobile, wipe local config and return to pairing.
   useEffect(() => {
     if (!supabase || !stationConfig?.stationId) return;

@@ -5,6 +5,17 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { checkForUpdates, quitAndInstall, startAutoUpdateLoop, wireUpdater } from "./updater.js";
 import { readStationConfig, writeStationConfig } from "./store.js";
+import {
+  canQuit,
+  createTray,
+  hideToTray,
+  lockKiosk,
+  setAllowQuit,
+  showFromTray,
+  unlockKiosk,
+  wireKioskGuards
+} from "./kiosk.js";
+import { startWatchdog } from "./watchdog.js";
 
 let mainWindow: BrowserWindow | null = null;
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -92,6 +103,9 @@ function createWindow() {
 
   wireUpdater(mainWindow);
   startAutoUpdateLoop();
+  wireKioskGuards(mainWindow);
+  createTray(mainWindow);
+  void startWatchdog();
   mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedUrl) => {
     console.error(`[did-fail-load] ${errorCode} ${errorDescription} ${validatedUrl}`);
   });
@@ -198,10 +212,22 @@ if (!hasSingleInstanceLock) {
       mainWindow.restore();
     }
 
-    mainWindow.focus();
+    showFromTray(mainWindow);
+  });
+
+  app.on("before-quit", (event) => {
+    if (!canQuit()) {
+      event.preventDefault();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        hideToTray(mainWindow);
+      }
+    }
   });
 
   app.whenReady().then(() => {
+    if (app.isPackaged) {
+      app.setLoginItemSettings({ openAtLogin: true, openAsHidden: false });
+    }
   ipcMain.handle("launch:d5", async () => {
     const config = await readStationConfig();
     return launchConfiguredBinary(config.d5ExecutablePath);
@@ -242,6 +268,27 @@ if (!hasSingleInstanceLock) {
     return { ok: true };
   });
 
+  ipcMain.handle("kiosk:lock", async () => {
+    lockKiosk(mainWindow);
+    return { ok: true };
+  });
+  ipcMain.handle("kiosk:unlock", async () => {
+    unlockKiosk(mainWindow);
+    return { ok: true };
+  });
+  ipcMain.handle("window:hide", async () => {
+    hideToTray(mainWindow);
+    return { ok: true };
+  });
+  ipcMain.handle("window:show", async () => {
+    showFromTray(mainWindow);
+    return { ok: true };
+  });
+  ipcMain.handle("app:allow-quit", async (_event, value: boolean) => {
+    setAllowQuit(Boolean(value));
+    return { ok: true };
+  });
+
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -252,6 +299,9 @@ if (!hasSingleInstanceLock) {
 }
 
 app.on("window-all-closed", () => {
+  // Never auto-quit: kiosk mode keeps the process alive in the tray until an
+  // explicit "Salir" from the tray menu flips `allowQuit`.
+  if (!canQuit()) return;
   if (process.platform !== "darwin") {
     app.quit();
   }

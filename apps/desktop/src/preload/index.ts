@@ -19,7 +19,12 @@ const workstation = {
     const listener = (_event: unknown, payload: UpdateStatus) => callback(payload);
     ipcRenderer.on("updater:status", listener);
     return () => ipcRenderer.removeListener("updater:status", listener);
-  }
+  },
+  lockKiosk: () => ipcRenderer.invoke("kiosk:lock") as Promise<{ ok: boolean }>,
+  unlockKiosk: () => ipcRenderer.invoke("kiosk:unlock") as Promise<{ ok: boolean }>,
+  hideToTray: () => ipcRenderer.invoke("window:hide") as Promise<{ ok: boolean }>,
+  showWindow: () => ipcRenderer.invoke("window:show") as Promise<{ ok: boolean }>,
+  allowQuit: (value: boolean) => ipcRenderer.invoke("app:allow-quit", value) as Promise<{ ok: boolean }>
 };
 
 contextBridge.exposeInMainWorld("workstation", workstation);
