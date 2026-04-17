@@ -126,6 +126,17 @@ export function GatekeeperPage() {
         if (current && current.freeAccess !== resp.data.free_access) {
           const updated = await window.workstation.saveStationConfig({ freeAccess: resp.data.free_access });
           useAppStore.getState().setStationConfig(updated);
+          // Apply the kiosk state directly here too. The lock effect below
+          // depends on a React deps change and has occasionally missed the
+          // false→true transition in the field; calling the IPCs inline
+          // makes this deterministic regardless of effect timing.
+          if (resp.data.free_access) {
+            await window.workstation.unlockKiosk();
+            await window.workstation.hideToTray();
+          } else if (!useAppStore.getState().session) {
+            await window.workstation.showWindow();
+            await window.workstation.lockKiosk();
+          }
         }
       }
       if (resp.data && resp.data.paired === false) {
