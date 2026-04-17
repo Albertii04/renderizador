@@ -24,7 +24,12 @@ const workstation = {
   unlockKiosk: () => ipcRenderer.invoke("kiosk:unlock") as Promise<{ ok: boolean }>,
   hideToTray: () => ipcRenderer.invoke("window:hide") as Promise<{ ok: boolean }>,
   showWindow: () => ipcRenderer.invoke("window:show") as Promise<{ ok: boolean }>,
-  allowQuit: (value: boolean) => ipcRenderer.invoke("app:allow-quit", value) as Promise<{ ok: boolean }>
+  allowQuit: (value: boolean) => ipcRenderer.invoke("app:allow-quit", value) as Promise<{ ok: boolean }>,
+  onForceRelock: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("kiosk:force-relock", listener);
+    return () => ipcRenderer.removeListener("kiosk:force-relock", listener);
+  }
 };
 
 contextBridge.exposeInMainWorld("workstation", workstation);

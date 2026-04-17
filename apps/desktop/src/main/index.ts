@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, powerMonitor, shell } from "electron";
 import { access, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -108,6 +108,19 @@ function createWindow() {
   createTray(mainWindow);
   void startWatchdog();
   void installOsKeepAlive();
+
+  // Any OS-level session change (screen unlock, wake from sleep, user became
+  // active on mac) forces the station back to the locked access-code screen.
+  // The renderer listens for `kiosk:force-relock` to also clear any active
+  // Supabase session so the next worker must re-enter their code.
+  const forceRelock = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send("kiosk:force-relock");
+    lockKiosk(mainWindow);
+  };
+  powerMonitor.on("unlock-screen", forceRelock);
+  powerMonitor.on("resume", forceRelock);
+  powerMonitor.on("user-did-become-active", forceRelock);
   mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedUrl) => {
     console.error(`[did-fail-load] ${errorCode} ${errorDescription} ${validatedUrl}`);
   });

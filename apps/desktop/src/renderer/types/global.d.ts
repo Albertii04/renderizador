@@ -18,6 +18,7 @@ declare global {
       hideToTray(): Promise<{ ok: boolean }>;
       showWindow(): Promise<{ ok: boolean }>;
       allowQuit(value: boolean): Promise<{ ok: boolean }>;
+      onForceRelock(callback: () => void): () => void;
     };
   }
 }

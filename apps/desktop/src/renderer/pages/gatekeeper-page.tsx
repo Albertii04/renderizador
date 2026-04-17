@@ -48,6 +48,28 @@ export function GatekeeperPage() {
     }
   }, [session]);
 
+  // Main process emits `kiosk:force-relock` on OS-level session events (screen
+  // unlock, resume from sleep, user became active). Always terminate any live
+  // Supabase session and bring the fullscreen code prompt back so the next
+  // worker has to re-authenticate.
+  useEffect(() => {
+    const off = window.workstation.onForceRelock(() => {
+      void (async () => {
+        const current = useAppStore.getState().session;
+        if (current && supabase) {
+          const { endStationSession } = await import("@renderizador/supabase");
+          await endStationSession(supabase, current.id, stationConfig?.stationSecret);
+        }
+        setSession(null);
+        setCodeInput("");
+        setMessage(null);
+        await window.workstation.showWindow();
+        await window.workstation.lockKiosk();
+      })();
+    });
+    return off;
+  }, [setSession, stationConfig?.stationSecret]);
+
   // Poll remote pairing state; if admin unpaired from mobile, wipe local config and return to pairing.
   useEffect(() => {
     if (!supabase || !stationConfig?.stationId) return;
