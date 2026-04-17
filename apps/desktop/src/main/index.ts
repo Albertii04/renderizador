@@ -102,7 +102,7 @@ function createWindow() {
   if (process.env.VITE_DEV_SERVER_URL) {
     void mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
-    void mainWindow.loadFile(join(currentDir, "../../dist/index.html"));
+    void mainWindow.loadFile(join(app.getAppPath(), "dist/index.html"));
   }
 
 }

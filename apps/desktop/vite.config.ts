@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 
 export default defineConfig({
   envDir: resolve(__dirname, "../../"),
+  base: "./",
   plugins: [
     react(),
     renderer(),
