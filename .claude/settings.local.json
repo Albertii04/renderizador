@@ -38,7 +38,13 @@
       "Bash(git init *)",
       "Bash(git config *)",
       "Bash(git remote *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh secret *)",
+      "Bash(git tag *)",
+      "Bash(gh run *)",
+      "Bash(git commit *)"
     ]
   }
 }

@@ -41,6 +41,7 @@ jobs:
         run: pnpm --filter @renderizador/desktop release:publish
 
       - name: Upload installer as workflow artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: renderizador-desktop-windows
