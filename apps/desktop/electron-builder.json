@@ -19,9 +19,9 @@
     "target": ["AppImage"]
   },
   "publish": {
-    "provider": "generic",
-    "url": "https://jufooheukaagcgbufsuw.supabase.co/storage/v1/object/public/desktop-releases",
-    "channel": "latest",
-    "useMultipleRangeRequest": false
+    "provider": "github",
+    "owner": "Albertii04",
+    "repo": "renderizador",
+    "releaseType": "release"
   }
 }

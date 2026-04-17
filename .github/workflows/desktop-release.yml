@@ -4,24 +4,19 @@ on:
   push:
     tags:
       - "desktop-v*"
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to build (optional — reads package.json if empty)"
-        required: false
+  workflow_dispatch: {}
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -34,11 +29,10 @@ jobs:
       - name: Install deps
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build + package Windows installer
-        run: pnpm --filter @renderizador/desktop pack:win
-
-      - name: Publish artifacts to Supabase Storage
-        run: pnpm --filter @renderizador/desktop release:publish
+      - name: Build + publish Windows installer to GitHub Releases
+        run: |
+          pnpm --filter @renderizador/desktop build
+          pnpm --filter @renderizador/desktop exec electron-builder --win --publish always
 
       - name: Upload installer as workflow artifact
         if: always()
