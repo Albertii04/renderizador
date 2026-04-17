@@ -50,6 +50,13 @@ export default function AdminStationsScreen() {
     return () => clearInterval(timer);
   }, []);
 
+  // Pulse state for the online indicator (blinks twice per second).
+  const [pulse, setPulse] = useState(true);
+  useEffect(() => {
+    const timer = setInterval(() => setPulse((p) => !p), 700);
+    return () => clearInterval(timer);
+  }, []);
+
   function openNew() {
     setForm({ ...emptyForm, releaseChannelId: releaseChannels[0]?.id ?? null });
     setOpen(true);
@@ -197,23 +204,24 @@ export default function AdminStationsScreen() {
                   <Text style={{ color: c.white, fontWeight: "600", fontSize: 15 }}>{item.name}</Text>
                   <Text style={{ color: c.muted, fontSize: 13, marginTop: 2 }}>{item.stationCode}{item.location ? ` · ${item.location}` : ""}</Text>
                 </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <View
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: online ? c.success : c.muted,
-                      }}
-                    />
-                    <Ionicons
-                      name={paired ? "link" : "unlink"}
-                      size={16}
-                      color={paired ? c.success : c.muted}
-                    />
-                  </View>
-                  <Badge label={item.enabled ? "Activa" : "Inactiva"} color={item.enabled ? c.success : c.danger} />
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <View
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor: online ? c.success : c.muted,
+                      opacity: online ? (pulse ? 1 : 0.25) : 1,
+                      shadowColor: online ? c.success : "transparent",
+                      shadowOpacity: online ? 0.9 : 0,
+                      shadowRadius: online ? 6 : 0,
+                    }}
+                  />
+                  <Ionicons
+                    name={paired ? "link" : "unlink"}
+                    size={16}
+                    color={paired ? c.success : c.muted}
+                  />
                 </View>
               </View>
             </Card>

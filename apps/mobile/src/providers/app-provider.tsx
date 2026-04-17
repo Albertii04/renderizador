@@ -270,8 +270,18 @@ export function AppProvider(props: PropsWithChildren) {
       void loadData();
     });
 
+    // Refetch stations every 20s so the admin monitor view picks up fresh
+    // last_seen_at values from station heartbeats without a manual reload.
+    const refreshTimer = setInterval(() => {
+      if (!supabase) return;
+      void fetchStations(supabase).then((r) => {
+        if (r.data) setStationsState(r.data.map(mapStation));
+      });
+    }, 20000);
+
     return () => {
       listener.subscription.unsubscribe();
+      clearInterval(refreshTimer);
     };
   }, []);
 
