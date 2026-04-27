@@ -1,0 +1,216 @@
+# Layer naming rules — maps AutoCAD layer names to element types.
+# Studio can edit this file to tune without touching code.
+#
+# Matching: first matching pattern wins. Patterns support * wildcards
+# (fnmatch). Matching is CASE-INSENSITIVE, so "MURO", "Muro" and "muro"
+# all match the same rule.
+
+defaults:
+  interior_wall_height_mm: 2700
+  exterior_wall_height_mm: 3000
+  wall_thickness_mm: 100
+  unit_override: null   # null = trust DXF header; otherwise "mm" | "m" | "in"
+
+rules:
+  # ───── Walls ─────
+  - pattern: "_Co MUROS*"
+    type: wall
+    kind: interior
+  - pattern: "_Co TABIQUERIA*"
+    type: wall
+    kind: interior
+  - pattern: "MURO*"                # Spanish
+    type: wall
+    kind: interior
+  - pattern: "PARETS*"              # Catalan
+    type: wall
+    kind: interior
+  - pattern: "DIVISÒRIES*"          # Catalan — interior dividers
+    type: wall
+    kind: interior
+  - pattern: "DIVISORIES*"          # Catalan sans accent
+    type: wall
+    kind: interior
+  - pattern: "TABIQU*"              # Spanish "tabique" (partition wall)
+    type: wall
+    kind: interior
+  - pattern: "ENDERROCS*"           # Catalan — demolition walls (show as wall for reference)
+    type: wall
+    kind: interior
+  - pattern: "WALL_EXT*"
+    type: wall
+    kind: exterior
+  - pattern: "WALL_*"
+    type: wall
+    kind: interior
+
+  # ───── Doors / windows (openings) ─────
+  - pattern: "_Co PUERTAS*"
+    type: opening
+    kind: door
+  - pattern: "_Co VENTANAS*"
+    type: opening
+    kind: window
+  - pattern: "PUERTAS*"
+    type: opening
+    kind: door
+  - pattern: "VENTANAS*"
+    type: opening
+    kind: window
+  - pattern: "PORTES*"              # Catalan doors
+    type: opening
+    kind: door
+  - pattern: "FINESTRES*"           # Catalan windows
+    type: opening
+    kind: window
+  - pattern: "FUSTERIES*"           # Catalan — woodwork / carpentry (mostly doors/windows)
+    type: opening
+    kind: door
+  - pattern: "CARPINTERIA*"         # Spanish carpentry
+    type: opening
+    kind: door
+  - pattern: "DOOR_*"
+    type: opening
+    kind: door
+  - pattern: "WIN_*"
+    type: opening
+    kind: window
+
+  # ───── Floors ─────
+  - pattern: "_Co PAVIMENTO*"
+    type: floor
+  - pattern: "PAVIMENT*"            # Catalan pavement (PAVIMENTS)
+    type: floor
+  - pattern: "PAVIMENTO*"           # Spanish
+    type: floor
+  - pattern: "SUELO*"
+    type: floor
+  - pattern: "FLOOR_*"
+    type: floor
+
+  # ───── Block-placed furniture / fixtures ─────
+  - pattern: "_Co SANITARIOS*"
+    type: block
+    kind: fixture
+  - pattern: "_Co MUEBLE*"
+    type: block
+    kind: furniture
+  - pattern: "SANITARIS*"           # Catalan
+    type: block
+    kind: fixture
+  - pattern: "SANITARIOS*"
+    type: block
+    kind: fixture
+  - pattern: "MOBILIARI FIX*"       # Catalan fixed furniture → fixtures
+    type: block
+    kind: fixture
+  - pattern: "MOBILIARI*"           # Catalan furniture
+    type: block
+    kind: furniture
+  - pattern: "MOBILIARIO*"          # Spanish
+    type: block
+    kind: furniture
+  - pattern: "MUEBLES*"
+    type: block
+    kind: furniture
+  - pattern: "A_MOBILIARIO*"
+    type: block
+    kind: furniture
+  - pattern: "Bloques*"
+    type: block
+    kind: furniture
+  - pattern: "FURN_*"
+    type: block
+    kind: furniture
+  - pattern: "FIX_*"
+    type: block
+    kind: fixture
+
+  # ───── Ignored layers ─────
+  - pattern: "_Co FALSO TECHO*"
+    type: ignore
+  - pattern: "_Co ILUMINACION*"
+    type: ignore
+  - pattern: "_Co MATERIALES*"
+    type: ignore
+  - pattern: "_Co PLADUR*"
+    type: ignore
+  - pattern: "_Co VIDRIO*"
+    type: ignore
+  - pattern: "_Co ROBOT*"
+    type: ignore
+  - pattern: "_Co PLANTAS*"
+    type: ignore
+  - pattern: "_Co CATEGORIZACION*"
+    type: ignore
+  - pattern: "_Co COTAS*"
+    type: ignore
+  - pattern: "_Co Nº FABRICACION*"
+    type: ignore
+  - pattern: "*Baixa distribució*"
+    type: ignore
+  - pattern: "PB Solid blocs*"
+    type: ignore
+  - pattern: "_Co SOMBREADOS*"
+    type: ignore
+  - pattern: "SOMBREADOS*"
+    type: ignore
+  - pattern: "OMBRES*"              # Catalan
+    type: ignore
+  - pattern: "Linea Capa Color*"
+    type: ignore
+  - pattern: "COTAS*"               # dimensions
+    type: ignore
+  - pattern: "COTES*"               # Catalan dimensions
+    type: ignore
+  - pattern: "TEXT*"
+    type: ignore
+  - pattern: "*TEXTO*"
+    type: ignore
+  - pattern: "PROJECCIÓ*"           # Catalan — ceiling projection (not 3D walls)
+    type: ignore
+  - pattern: "PROYECCION*"
+    type: ignore
+  - pattern: "PROYECCIÓN*"
+    type: ignore
+  - pattern: "A_luminarias*"        # lighting annotations
+    type: ignore
+  - pattern: "A_proyección*"
+    type: ignore
+  - pattern: "ALZADO*"              # elevation view (2D annotation)
+    type: ignore
+  - pattern: "SUPERFÍCIES*"
+    type: ignore
+  - pattern: "SUPERFICIES*"
+    type: ignore
+  - pattern: "ACCESSIBILITAT*"
+    type: ignore
+  - pattern: "ACCESIBILIDAD*"
+    type: ignore
+  - pattern: "CONCEP 2D*"
+    type: ignore
+  - pattern: "DISCONTINUA*"
+    type: ignore
+  - pattern: "H SECCIÓ*"
+    type: ignore
+  - pattern: "H SECCION*"
+    type: ignore
+  - pattern: "DEFPOINTS*"
+    type: ignore
+  - pattern: "ELECTRICIDAD*"
+    type: ignore
+  - pattern: "ELECTRICITAT*"
+    type: ignore
+  - pattern: "dwgautocad*"          # watermark layer
+    type: ignore
+  - pattern: "textos*"
+    type: ignore
+  - pattern: "0"
+    type: ignore                   # AutoCAD default layer — usually cruft
+  - pattern: "*_IGNORE"
+    type: ignore
+
+  # Catch-all — anything unmatched logs a warning but doesn't fail the import.
+  - pattern: "*"
+    type: ignore
+    warn: true

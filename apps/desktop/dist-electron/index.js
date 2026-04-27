@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import require$$1$4, { app, safeStorage, ipcMain, shell, BrowserWindow } from "electron";
+import require$$1$4, { app, safeStorage, nativeImage, Tray, Menu, ipcMain, shell, BrowserWindow, powerMonitor } from "electron";
 import { mkdir, writeFile, readFile, access } from "node:fs/promises";
 import { dirname, join, isAbsolute, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -21,6 +21,7 @@ import require$$2 from "url";
 import require$$14 from "zlib";
 import require$$4$1 from "http";
 import require$$1$6 from "https";
+import { homedir } from "node:os";
 var commonjsGlobal = typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : {};
 function getDefaultExportFromCjs(x) {
   return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
@@ -11658,14 +11659,14 @@ function requireAppAdapter() {
   const path = require$$1$1;
   const os_1 = require$$1$3;
   function getAppCacheDir() {
-    const homedir = (0, os_1.homedir)();
+    const homedir2 = (0, os_1.homedir)();
     let result;
     if (process.platform === "win32") {
-      result = process.env["LOCALAPPDATA"] || path.join(homedir, "AppData", "Local");
+      result = process.env["LOCALAPPDATA"] || path.join(homedir2, "AppData", "Local");
     } else if (process.platform === "darwin") {
-      result = path.join(homedir, "Library", "Caches");
+      result = path.join(homedir2, "Library", "Caches");
     } else {
-      result = process.env["XDG_CACHE_HOME"] || path.join(homedir, ".cache");
+      result = process.env["XDG_CACHE_HOME"] || path.join(homedir2, ".cache");
     }
     return result;
   }
@@ -18005,28 +18006,20 @@ autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 const HOUR_MS = 60 * 60 * 1e3;
 let pollHandle = null;
-function wireUpdater(mainWindow2) {
-  autoUpdater.on("checking-for-update", () => {
-    mainWindow2.webContents.send("updater:status", { status: "checking" });
-  });
-  autoUpdater.on("update-available", (info) => {
-    mainWindow2.webContents.send("updater:status", { status: "available", version: info.version });
-  });
-  autoUpdater.on("update-not-available", () => {
-    mainWindow2.webContents.send("updater:status", { status: "not_available" });
-  });
-  autoUpdater.on("download-progress", (progress) => {
-    mainWindow2.webContents.send("updater:status", {
-      status: "downloading",
-      percent: progress.percent
-    });
-  });
-  autoUpdater.on("update-downloaded", (info) => {
-    mainWindow2.webContents.send("updater:status", { status: "downloaded", version: info.version });
-  });
-  autoUpdater.on("error", (error2) => {
-    mainWindow2.webContents.send("updater:status", { status: "error", message: error2.message });
-  });
+function wireUpdater(mainWindow2, onStatus) {
+  const emit = (status) => {
+    mainWindow2.webContents.send("updater:status", status);
+    onStatus == null ? void 0 : onStatus(status);
+  };
+  autoUpdater.on("checking-for-update", () => emit({ status: "checking" }));
+  autoUpdater.on("update-available", (info) => emit({ status: "available", version: info.version }));
+  autoUpdater.on("update-not-available", () => emit({ status: "not_available" }));
+  autoUpdater.on(
+    "download-progress",
+    (progress) => emit({ status: "downloading", percent: progress.percent })
+  );
+  autoUpdater.on("update-downloaded", (info) => emit({ status: "downloaded", version: info.version }));
+  autoUpdater.on("error", (error2) => emit({ status: "error", message: error2.message }));
 }
 function startAutoUpdateLoop() {
   if (!app.isPackaged) return;
@@ -18070,7 +18063,8 @@ const defaultConfig = {
   mode: "",
   rdpHost: "",
   rdpWindowsUsername: "",
-  rdpWindowsPassword: ""
+  rdpWindowsPassword: "",
+  freeAccess: false
 };
 const defaultPublicConfig = {
   stationId: "",
@@ -18083,7 +18077,8 @@ const defaultPublicConfig = {
   rdpCommand: "",
   mode: "",
   rdpHost: "",
-  rdpWindowsUsername: ""
+  rdpWindowsUsername: "",
+  freeAccess: false
 };
 const defaultSecureConfig = {
   stationSecret: "",
@@ -18158,7 +18153,8 @@ async function writeStationConfig(input) {
     rdpCommand: nextConfig.rdpCommand,
     mode: nextConfig.mode,
     rdpHost: nextConfig.rdpHost,
-    rdpWindowsUsername: nextConfig.rdpWindowsUsername
+    rdpWindowsUsername: nextConfig.rdpWindowsUsername,
+    freeAccess: nextConfig.freeAccess
   };
   const secureConfig = {
     stationSecret: encryptSecret(nextConfig.stationSecret),
@@ -18172,6 +18168,271 @@ async function writeStationConfig(input) {
     writeFile(secureFilePath, JSON.stringify(secureConfig, null, 2), "utf8")
   ]);
   return nextConfig;
+}
+const ICON_IDLE_DATA_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAW0lEQVR4nO3QMQ6AIBBE0a8XsvT+h7KwE+xoEMGExMSCTf5rXjMFgPnSvh3rfXq6o7iIVwISoRBEKQpBlIIoRSGIUhSCKEUhiFIUgihFIYhSFIIoRSGIUhTWL7QOLuPW7UJ8AAAAAElFTkSuQmCC";
+const ICON_ACTIVE_DATA_URL = ICON_IDLE_DATA_URL;
+let tray = null;
+let kioskLocked = false;
+let allowQuit = false;
+let pendingUpdateVersion = null;
+let installUpdateHandler = null;
+let trayWindow = null;
+function canQuit() {
+  return allowQuit;
+}
+function setAllowQuit(value) {
+  allowQuit = value;
+}
+function lockKiosk(win) {
+  var _a, _b;
+  if (!win || win.isDestroyed()) return;
+  kioskLocked = true;
+  if (!win.isVisible()) win.show();
+  if (process.platform === "darwin") {
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    (_b = (_a = app.dock) == null ? void 0 : _a.show()) == null ? void 0 : _b.catch(() => void 0);
+  }
+  win.setMinimizable(false);
+  win.setClosable(false);
+  win.setFullScreen(true);
+  win.setKiosk(true);
+  win.setAlwaysOnTop(true, "screen-saver");
+  win.focus();
+  updateTrayState("idle");
+}
+function unlockKiosk(win) {
+  if (!win || win.isDestroyed()) return;
+  kioskLocked = false;
+  win.setKiosk(false);
+  win.setAlwaysOnTop(false);
+  win.setFullScreen(false);
+  win.setClosable(true);
+  win.setMinimizable(true);
+  updateTrayState("active");
+}
+function hideToTray(win) {
+  var _a;
+  if (!win || win.isDestroyed()) return;
+  if (process.platform === "darwin") {
+    (_a = app.dock) == null ? void 0 : _a.hide();
+  }
+  win.hide();
+  updateTrayState("active");
+}
+function showFromTray(win) {
+  var _a, _b;
+  if (!win || win.isDestroyed()) return;
+  if (process.platform === "darwin") {
+    (_b = (_a = app.dock) == null ? void 0 : _a.show()) == null ? void 0 : _b.catch(() => void 0);
+  }
+  win.show();
+  win.focus();
+}
+function wireKioskGuards(win) {
+  win.on("close", (event) => {
+    if (!canQuit()) {
+      event.preventDefault();
+      if (kioskLocked) {
+        win.show();
+        win.focus();
+      } else {
+        hideToTray(win);
+      }
+    }
+  });
+  win.on("blur", () => {
+    if (!kioskLocked) return;
+    setImmediate(() => {
+      if (!win.isDestroyed() && kioskLocked) win.focus();
+    });
+  });
+  win.on("minimize", () => {
+    if (kioskLocked) {
+      win.restore();
+      win.focus();
+    }
+  });
+  win.webContents.on("before-input-event", (event, input) => {
+    if (!kioskLocked) return;
+    const key = input.key.toLowerCase();
+    const blocked = input.alt && key === "tab" || input.alt && key === "f4" || input.meta && (key === "q" || key === "w" || key === "h" || key === "m") || input.control && input.shift && key === "i" || key === "f11" || key === "f12" || key === "escape";
+    if (blocked) event.preventDefault();
+  });
+}
+function setPendingUpdate(version, onInstall) {
+  pendingUpdateVersion = version;
+  installUpdateHandler = onInstall;
+  if (trayWindow) rebuildTrayMenu(trayWindow);
+}
+function createTray(win) {
+  trayWindow = win;
+  if (tray) return tray;
+  const image = nativeImage.createFromDataURL(ICON_IDLE_DATA_URL);
+  if (process.platform === "darwin") image.setTemplateImage(true);
+  try {
+    tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image);
+  } catch (error2) {
+    console.error("[tray] create failed", error2);
+    return null;
+  }
+  tray.setToolTip("Renderizador");
+  if (process.platform === "darwin" && image.isEmpty()) tray.setTitle("●");
+  tray.on("click", () => showFromTray(win));
+  tray.on("double-click", () => showFromTray(win));
+  rebuildTrayMenu(win);
+  return tray;
+}
+function rebuildTrayMenu(win) {
+  if (!tray) return;
+  const items = [
+    { label: `Renderizador v${app.getVersion()}`, enabled: false }
+  ];
+  if (pendingUpdateVersion && installUpdateHandler) {
+    items.push({
+      label: `Instalar actualización v${pendingUpdateVersion}`,
+      click: () => installUpdateHandler == null ? void 0 : installUpdateHandler()
+    });
+  }
+  items.push({ type: "separator" }, { label: "Mostrar estación", click: () => showFromTray(win) });
+  tray.setContextMenu(Menu.buildFromTemplate(items));
+}
+function updateTrayState(state) {
+  if (!tray) return;
+  const url = state === "idle" ? ICON_IDLE_DATA_URL : ICON_ACTIVE_DATA_URL;
+  const image = nativeImage.createFromDataURL(url);
+  if (process.platform === "darwin") image.setTemplateImage(true);
+  if (!image.isEmpty()) tray.setImage(image);
+  tray.setToolTip(state === "idle" ? "Renderizador · estación libre" : "Renderizador · sesión en curso");
+}
+const RUNNER_SOURCE = `
+const { spawn } = require("child_process");
+const [, , pidStr, appExec] = process.argv;
+const pid = Number(pidStr);
+if (!pid || !appExec) process.exit(1);
+
+const timer = setInterval(() => {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    clearInterval(timer);
+    try {
+      const env = Object.assign({}, process.env);
+      delete env.ELECTRON_RUN_AS_NODE;
+      spawn(appExec, [], { detached: true, stdio: "ignore", env }).unref();
+    } catch (error) {
+      // swallow — OS-level keepalive will recover
+    }
+    process.exit(0);
+  }
+}, 2000);
+`;
+async function startWatchdog() {
+  if (!app.isPackaged) return;
+  try {
+    const runnerPath = join(app.getPath("temp"), "renderizador-watchdog.cjs");
+    await writeFile(runnerPath, RUNNER_SOURCE, "utf8");
+    const child = spawn(process.execPath, [runnerPath, String(process.pid), process.execPath], {
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" }
+    });
+    child.unref();
+  } catch (error2) {
+    console.error("[watchdog] start failed", error2);
+  }
+}
+const AGENT_LABEL = "com.renderizador.station.keepalive";
+const WIN_TASK_NAME = "RenderizadorStationKeepAlive";
+async function installOsKeepAlive() {
+  if (!app.isPackaged) return;
+  try {
+    if (process.platform === "darwin") {
+      await installLaunchAgent();
+    } else if (process.platform === "win32") {
+      await installScheduledTask();
+    }
+  } catch (error2) {
+    console.error("[keepalive] install failed", error2);
+  }
+}
+async function installLaunchAgent() {
+  var _a;
+  const exec = process.execPath;
+  const agentsDir = join(homedir(), "Library", "LaunchAgents");
+  const plistPath = join(agentsDir, `${AGENT_LABEL}.plist`);
+  const plist = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>${AGENT_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>${exec}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Interactive</string>
+</dict>
+</plist>
+`;
+  await mkdir(agentsDir, { recursive: true });
+  await writeFile(plistPath, plist, "utf8");
+  const uid = ((_a = process.getuid) == null ? void 0 : _a.call(process)) ?? 0;
+  const domain = `gui/${uid}`;
+  spawn("launchctl", ["bootstrap", domain, plistPath], { stdio: "ignore" }).on("error", () => void 0);
+  spawn("launchctl", ["enable", `${domain}/${AGENT_LABEL}`], { stdio: "ignore" }).on("error", () => void 0);
+}
+async function installScheduledTask() {
+  const exec = process.execPath;
+  const logPath = join(app.getPath("userData"), "keepalive-install.log");
+  const runSchtasks = (args) => new Promise((resolveRun) => {
+    var _a, _b;
+    const child = spawn("schtasks", args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true
+    });
+    let stdout = "";
+    let stderr = "";
+    (_a = child.stdout) == null ? void 0 : _a.on("data", (chunk) => stdout += chunk.toString());
+    (_b = child.stderr) == null ? void 0 : _b.on("data", (chunk) => stderr += chunk.toString());
+    child.on("error", (error2) => resolveRun({ code: -1, stdout, stderr: stderr + String(error2) }));
+    child.on("close", (code) => resolveRun({ code, stdout, stderr }));
+  });
+  const minuteTask = await runSchtasks([
+    "/Create",
+    "/SC",
+    "MINUTE",
+    "/MO",
+    "1",
+    "/TN",
+    WIN_TASK_NAME,
+    "/TR",
+    `"${exec}"`,
+    "/F"
+  ]);
+  const logonTask = await runSchtasks([
+    "/Create",
+    "/SC",
+    "ONLOGON",
+    "/TN",
+    `${WIN_TASK_NAME}Logon`,
+    "/TR",
+    `"${exec}"`,
+    "/F"
+  ]);
+  const summary = `[${(/* @__PURE__ */ new Date()).toISOString()}] exec=${exec}
+minute: exit=${minuteTask.code} stdout=${minuteTask.stdout.trim()} stderr=${minuteTask.stderr.trim()}
+logon: exit=${logonTask.code} stdout=${logonTask.stdout.trim()} stderr=${logonTask.stderr.trim()}
+
+`;
+  try {
+    await writeFile(logPath, summary, { flag: "a" });
+  } catch {
+  }
 }
 let mainWindow = null;
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -18248,8 +18509,30 @@ function createWindow() {
       nodeIntegration: false
     }
   });
-  wireUpdater(mainWindow);
+  wireUpdater(mainWindow, (status) => {
+    if (status.status === "downloaded" && status.version) {
+      setPendingUpdate(status.version, () => {
+        setAllowQuit(true);
+        void quitAndInstall();
+      });
+    } else if (status.status === "not_available" || status.status === "error") {
+      setPendingUpdate(null, null);
+    }
+  });
   startAutoUpdateLoop();
+  wireKioskGuards(mainWindow);
+  createTray(mainWindow);
+  void startWatchdog();
+  void installOsKeepAlive();
+  const forceRelock = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send("kiosk:force-relock");
+    lockKiosk(mainWindow);
+  };
+  powerMonitor.on("unlock-screen", forceRelock);
+  powerMonitor.on("lock-screen", forceRelock);
+  powerMonitor.on("resume", forceRelock);
+  powerMonitor.on("user-did-become-active", forceRelock);
   mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedUrl) => {
     console.error(`[did-fail-load] ${errorCode} ${errorDescription} ${validatedUrl}`);
   });
@@ -18337,9 +18620,20 @@ if (!hasSingleInstanceLock) {
     if (mainWindow.isMinimized()) {
       mainWindow.restore();
     }
-    mainWindow.focus();
+    showFromTray(mainWindow);
+  });
+  app.on("before-quit", (event) => {
+    if (!canQuit()) {
+      event.preventDefault();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        hideToTray(mainWindow);
+      }
+    }
   });
   app.whenReady().then(() => {
+    if (app.isPackaged) {
+      app.setLoginItemSettings({ openAtLogin: true, openAsHidden: false });
+    }
     ipcMain.handle("launch:d5", async () => {
       const config = await readStationConfig();
       return launchConfiguredBinary(config.d5ExecutablePath);
@@ -18378,6 +18672,26 @@ if (!hasSingleInstanceLock) {
       await shell.openExternal(target);
       return { ok: true };
     });
+    ipcMain.handle("kiosk:lock", async () => {
+      lockKiosk(mainWindow);
+      return { ok: true };
+    });
+    ipcMain.handle("kiosk:unlock", async () => {
+      unlockKiosk(mainWindow);
+      return { ok: true };
+    });
+    ipcMain.handle("window:hide", async () => {
+      hideToTray(mainWindow);
+      return { ok: true };
+    });
+    ipcMain.handle("window:show", async () => {
+      showFromTray(mainWindow);
+      return { ok: true };
+    });
+    ipcMain.handle("app:allow-quit", async (_event, value) => {
+      setAllowQuit(Boolean(value));
+      return { ok: true };
+    });
     createWindow();
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
@@ -18387,6 +18701,7 @@ if (!hasSingleInstanceLock) {
   });
 }
 app.on("window-all-closed", () => {
+  if (!canQuit()) return;
   if (process.platform !== "darwin") {
     app.quit();
   }

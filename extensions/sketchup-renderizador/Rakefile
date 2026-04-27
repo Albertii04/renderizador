@@ -1,0 +1,109 @@
+require "rake"
+require "fileutils"
+
+LOADER   = File.expand_path("ruby_extension/autocad_importer.rb", __dir__)
+VERSION  = File.read(LOADER)[/VERSION\s*=\s*"([^"]+)"/, 1]
+SRC_DIR  = File.expand_path("ruby_extension", __dir__)
+DIST_DIR = File.expand_path("dist", __dir__)
+BIN_DST    = File.expand_path("ruby_extension/autocad_importer/bin", __dir__)
+ASSETS_DST = File.expand_path("ruby_extension/autocad_importer/assets", __dir__)
+LIB_DST    = File.expand_path("ruby_extension/autocad_importer/assets/library", __dir__)
+PY_BIN     = File.expand_path("python_parser/dist/parse_dxf", __dir__)
+LIB_SRC    = File.expand_path("library_source", __dir__)   # editable source of truth
+LIB_JSON   = File.expand_path("python_parser/library_index.json", __dir__)
+
+task default: %i[package]
+
+desc "Run minitest suite (currently none defined)"
+task :test do
+  files = Dir.glob(File.expand_path("test/**/*_test.rb", __dir__))
+  if files.empty?
+    puts "no tests yet"
+  else
+    sh "bundle exec ruby -Itest -rminitest/autorun #{files.map(&:inspect).join(' ')}"
+  end
+end
+
+desc "Build PyInstaller binary (macOS/Linux host)"
+task :build_parser do
+  Dir.chdir(File.expand_path("python_parser", __dir__)) do
+    sh "bash build.sh"
+  end
+end
+
+desc "Copy freshly-built parser binary into ruby_extension/autocad_importer/bin/"
+task install_parser: :build_parser do
+  FileUtils.mkdir_p(BIN_DST)
+  raise "parser binary not found at #{PY_BIN}" unless File.exist?(PY_BIN)
+  FileUtils.cp(PY_BIN, File.join(BIN_DST, "parse_dxf"))
+  FileUtils.chmod(0o755, File.join(BIN_DST, "parse_dxf"))
+  puts "installed parser -> ruby_extension/autocad_importer/bin/parse_dxf"
+end
+
+desc "Add missing stubs to library_source/ (preserves modeled files). Run when adding new training DWGs introduce new pieces."
+task :regen_stubs do
+  template = ENV["TEMPLATE_SKP"] || File.expand_path("../../Downloads/Plantilla.skp", __dir__)
+  unless File.exist?(template)
+    raise "template .skp not found at #{template}. " \
+          "Set TEMPLATE_SKP=/abs/path/to/empty.skp before running rake."
+  end
+  FileUtils.mkdir_p(LIB_SRC)
+  Dir.chdir(File.expand_path("python_parser", __dir__)) do
+    sh "python3 build_library_stubs.py --out #{LIB_SRC.inspect} --add-only " \
+       "--template #{template.inspect}"
+  end
+  count = Dir.glob(File.join(LIB_SRC, "**/*.skp")).size
+  modeled = Dir.glob(File.join(LIB_SRC, "**/*.skp")).count { |f| File.size(f) > File.size(template) + 1024 }
+  puts "library_source/: #{count} stubs (#{modeled} modeled, #{count - modeled} empty)"
+end
+
+desc "Copy library_source/ → assets/library/ for packaging"
+task :install_library do
+  unless Dir.exist?(LIB_SRC)
+    raise "library_source/ missing — run `rake regen_stubs` first to seed it."
+  end
+
+  FileUtils.mkdir_p(ASSETS_DST)
+  %w[biblioteca.dwg biblioteca.dxf library_index.json].each do |f|
+    path = File.join(ASSETS_DST, f)
+    File.delete(path) if File.exist?(path)
+  end
+  FileUtils.rm_rf(LIB_DST)
+  FileUtils.mkdir_p(LIB_DST)
+
+  # Mirror library_source/ into assets/library/.
+  Dir.glob(File.join(LIB_SRC, "**/*")).each do |src|
+    next if File.directory?(src)
+    rel = src.sub(LIB_SRC + "/", "")
+    dst = File.join(LIB_DST, rel)
+    FileUtils.mkdir_p(File.dirname(dst))
+    FileUtils.cp(src, dst)
+  end
+
+  # aliases.json also needs to live at assets/aliases.json (geometry_builder
+  # reads it from there).
+  alias_src = File.join(LIB_DST, "aliases.json")
+  FileUtils.cp(alias_src, File.join(ASSETS_DST, "aliases.json")) if File.exist?(alias_src)
+
+  count = Dir.glob(File.join(LIB_DST, "**/*.skp")).size
+  bytes = Dir.glob(File.join(LIB_DST, "**/*")).sum { |f| File.file?(f) ? File.size(f) : 0 }
+  puts "staged library/: #{count} .skp from library_source/ (#{(bytes / 1e6).round(1)} MB)"
+end
+
+desc "Package SketchUp extension as .rbz (requires parser binary in ruby_extension/autocad_importer/bin/)"
+task package: %i[install_library] do
+  raise "parser binary missing — run `rake install_parser` first" \
+    unless File.exist?(File.join(BIN_DST, "parse_dxf")) || File.exist?(File.join(BIN_DST, "parse_dxf.exe"))
+
+  FileUtils.mkdir_p(DIST_DIR)
+  out = File.join(DIST_DIR, "autocad-importer-#{VERSION}.rbz")
+  File.delete(out) if File.exist?(out)
+
+  Dir.chdir(SRC_DIR) do
+    sh "zip -r #{out.inspect} autocad_importer.rb autocad_importer -x '*.DS_Store' -x '*/__pycache__/*'"
+  end
+  puts "wrote #{out}"
+end
+
+desc "Full release: build parser → install → package .rbz"
+task release: %i[install_parser package]

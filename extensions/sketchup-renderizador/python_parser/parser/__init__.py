@@ -1,0 +1,1 @@
+"""DXF → intermediate JSON parser."""

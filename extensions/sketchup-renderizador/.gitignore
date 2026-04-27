@@ -1,0 +1,25 @@
+dist/
+*.rbz
+.bundle/
+vendor/bundle/
+Gemfile.lock
+
+# Python
+python_parser/.venv/
+python_parser/build/
+python_parser/dist/
+python_parser/sample.dxf
+python_parser/sample.json
+python_parser/*.egg-info/
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+
+# PyInstaller output shipped into ruby_extension/autocad_importer/bin/ once built
+ruby_extension/autocad_importer/bin/
+
+# Editors
+.vscode/
+.idea/
+.DS_Store

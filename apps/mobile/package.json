@@ -7,7 +7,9 @@
     "dev": "expo start --clear",
     "build": "expo export --platform all",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@bottom-tabs/react-navigation": "^1.2.0",

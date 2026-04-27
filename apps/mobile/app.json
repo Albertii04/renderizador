@@ -6,6 +6,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "ios": {
+      "bundleIdentifier": "com.albertii04.renderizador",
+      "buildNumber": "1",
+      "supportsTablet": true
+    },
     "plugins": [
       "expo-router",
       "expo-web-browser",

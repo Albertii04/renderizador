@@ -1,0 +1,10 @@
+source "https://rubygems.org"
+
+ruby "~> 3.0"
+
+group :development do
+  gem "rake", "~> 13.0"
+  gem "rubocop", "~> 1.65", require: false
+  gem "minitest", "~> 5.25"
+  # rubyzip not required — Rakefile uses the system `zip` CLI.
+end
