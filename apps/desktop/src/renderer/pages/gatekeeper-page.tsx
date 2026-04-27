@@ -66,6 +66,11 @@ export function GatekeeperPage() {
   useEffect(() => {
     const off = window.workstation.onForceRelock(() => {
       void (async () => {
+        if (useAppStore.getState().stationConfig?.freeAccess) {
+          await window.workstation.unlockKiosk();
+          await window.workstation.hideToTray();
+          return;
+        }
         const current = useAppStore.getState().session;
         if (current && supabase) {
           const { endStationSession } = await import("@renderizador/supabase");
