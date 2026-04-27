@@ -1,0 +1,51 @@
+name: sketchup-extension-release
+
+on:
+  push:
+    tags:
+      - "sketchup-v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: extensions/sketchup-renderizador
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build Windows parser binary
+        working-directory: extensions/sketchup-renderizador/python_parser
+        run: ./build.ps1
+
+      - name: Stage binary into extension
+        run: |
+          New-Item -ItemType Directory -Force -Path ruby_extension/autocad_importer/bin | Out-Null
+          Copy-Item python_parser/dist/parse_dxf.exe ruby_extension/autocad_importer/bin/parse_dxf.exe -Force
+
+      - name: Package .rbz
+        working-directory: extensions/sketchup-renderizador/ruby_extension
+        run: |
+          $zip = "../autocad_importer.rbz"
+          if (Test-Path $zip) { Remove-Item $zip }
+          Compress-Archive -Path autocad_importer.rb, autocad_importer -DestinationPath ../autocad_importer.zip
+          Move-Item ../autocad_importer.zip $zip
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+            extensions/sketchup-renderizador/autocad_importer.rbz `
+            --title $env:GITHUB_REF_NAME `
+            --notes "SketchUp extension build with bundled Windows parser binary."

@@ -45,8 +45,8 @@ module AutocadImporter
 
       # Fallback: run bundled Python source if user has Python + deps
       # installed. Saves Windows users from needing to compile a binary.
-      py_script = File.join(__dir__, "python_parser", "parse_dxf.py")
-      if File.exist?(py_script)
+      py_script = python_source_path
+      if py_script && File.exist?(py_script)
         return [python_executable, py_script, dxf_path]
       end
 
@@ -55,13 +55,44 @@ module AutocadImporter
             "On Windows install Python + run: pip install ezdxf pyyaml shapely"
     end
 
+    # Where to look for the Python source as a last resort. Two locations:
+    # 1. Inside the packaged extension (./python_parser/parse_dxf.py) when a dev
+    #    bundles the source instead of the binary.
+    # 2. Two levels up, alongside the repo's python_parser/ folder, for anyone
+    #    running the extension straight from a checkout without dev mode set.
+    def python_source_path
+      candidates = [
+        File.join(__dir__, "python_parser", "parse_dxf.py"),
+        File.expand_path("../../python_parser/parse_dxf.py", __dir__),
+      ]
+      candidates.find { |p| File.exist?(p) }
+    end
+
     def python_executable
-      # Try python3 then python — Windows usually has `python`, mac/linux `python3`.
-      if Sketchup.platform == :platform_win
-        "python"
-      else
-        "python3"
-      end
+      @python_executable ||= discover_python_executable
+    end
+
+    # On Windows, `python3` rarely exists and `python` is only on PATH if the
+    # user ticked "Add Python to PATH" during install. The Python launcher
+    # `py` ships with every modern Python installer and is the most reliable
+    # entry point. Try it first, then `python`, then `python3`.
+    def discover_python_executable
+      candidates =
+        if Sketchup.platform == :platform_win
+          %w[py python python3]
+        else
+          %w[python3 python]
+        end
+
+      candidates.find { |c| executable_in_path?(c) } || candidates.first
+    end
+
+    def executable_in_path?(name)
+      probe = Sketchup.platform == :platform_win ? "where" : "command -v"
+      _out, _err, status = Open3.capture3("#{probe} #{name}")
+      status.success?
+    rescue StandardError
+      false
     end
   end
 end

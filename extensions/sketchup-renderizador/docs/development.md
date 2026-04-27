@@ -56,6 +56,8 @@ We should probably automate step 1–2 inside `Importer#run` to spare the user a
 
 ## Packaging for the studio
 
+### macOS / Linux
+
 ```bash
 cd python_parser && ./build.sh
 cp dist/parse_dxf ../ruby_extension/autocad_importer/bin/
@@ -63,7 +65,29 @@ cd ../ruby_extension
 zip -r ../autocad_importer.rbz autocad_importer.rb autocad_importer/
 ```
 
+### Windows
+
+```powershell
+cd python_parser
+./build.ps1
+New-Item -ItemType Directory -Force -Path ../ruby_extension/autocad_importer/bin
+Copy-Item dist/parse_dxf.exe ../ruby_extension/autocad_importer/bin/
+cd ../ruby_extension
+Compress-Archive -Path autocad_importer.rb, autocad_importer -DestinationPath ../autocad_importer.rbz -Force
+```
+
+### CI (recommended)
+
+Push a `sketchup-v*` tag and the `sketchup-extension-release` workflow builds the
+Windows `.exe`, packages the `.rbz`, and attaches it to a GitHub Release.
+
 Then in SketchUp: Window → Extension Manager → Install Extension → pick the `.rbz`.
+
+> **Note for non-packaged use**: if you install the source tree directly without
+> running `build.{sh,ps1}`, `parser_bridge.rb` falls back to running
+> `python_parser/parse_dxf.py` via the local Python interpreter. It looks for
+> `py`, `python`, or `python3` in that order on Windows, and `python3`/`python`
+> on macOS/Linux. Install deps with `pip install -r python_parser/requirements.txt`.
 
 ## Known gaps (by design, for v0.1)
 
