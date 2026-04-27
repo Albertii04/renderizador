@@ -36,10 +36,24 @@ jobs:
       - name: Package .rbz
         working-directory: extensions/sketchup-renderizador/ruby_extension
         run: |
-          $zip = "../autocad_importer.rbz"
-          if (Test-Path $zip) { Remove-Item $zip }
-          Compress-Archive -Path autocad_importer.rb, autocad_importer -DestinationPath ../autocad_importer.zip
-          Move-Item ../autocad_importer.zip $zip
+          $rbz = "..\autocad_importer.rbz"
+          if (Test-Path $rbz) { Remove-Item $rbz -Force }
+          # Compress-Archive on PS5.1 writes backslashes in zip entries which
+          # breaks SketchUp's loader on macOS. Build the archive manually with
+          # System.IO.Compression so entries use forward slashes (zip spec).
+          Add-Type -AssemblyName System.IO.Compression
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $root = (Get-Location).Path
+          $zip = [System.IO.Compression.ZipFile]::Open($rbz, 'Create')
+          try {
+            $files = Get-ChildItem -File -Path autocad_importer.rb, autocad_importer -Recurse
+            foreach ($f in $files) {
+              $rel = $f.FullName.Substring($root.Length + 1) -replace '\\', '/'
+              [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $f.FullName, $rel, [System.IO.Compression.CompressionLevel]::Optimal)
+            }
+          } finally {
+            $zip.Dispose()
+          }
 
       - name: Publish release
         env:
