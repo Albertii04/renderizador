@@ -1,0 +1,65 @@
+name: sketchup-extension-release
+
+on:
+  push:
+    tags:
+      - "sketchup-v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: extensions/sketchup-renderizador
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build Windows parser binary
+        working-directory: extensions/sketchup-renderizador/python_parser
+        run: ./build.ps1
+
+      - name: Stage binary into extension
+        run: |
+          New-Item -ItemType Directory -Force -Path ruby_extension/autocad_importer/bin | Out-Null
+          Copy-Item python_parser/dist/parse_dxf.exe ruby_extension/autocad_importer/bin/parse_dxf.exe -Force
+
+      - name: Package .rbz
+        working-directory: extensions/sketchup-renderizador/ruby_extension
+        run: |
+          $rbz = "..\autocad_importer.rbz"
+          if (Test-Path $rbz) { Remove-Item $rbz -Force }
+          # Compress-Archive on PS5.1 writes backslashes in zip entries which
+          # breaks SketchUp's loader on macOS. Build the archive manually with
+          # System.IO.Compression so entries use forward slashes (zip spec).
+          Add-Type -AssemblyName System.IO.Compression
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $root = (Get-Location).Path
+          $zip = [System.IO.Compression.ZipFile]::Open($rbz, 'Create')
+          try {
+            $files = Get-ChildItem -File -Path autocad_importer.rb, autocad_importer -Recurse
+            foreach ($f in $files) {
+              $rel = $f.FullName.Substring($root.Length + 1) -replace '\\', '/'
+              [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $f.FullName, $rel, [System.IO.Compression.CompressionLevel]::Optimal)
+            }
+          } finally {
+            $zip.Dispose()
+          }
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create $env:GITHUB_REF_NAME `
+            extensions/sketchup-renderizador/autocad_importer.rbz `
+            --title $env:GITHUB_REF_NAME `
+            --notes "SketchUp extension build with bundled Windows parser binary."

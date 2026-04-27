@@ -49,7 +49,9 @@ class Rules:
 
 
 def load_rules(path: Path) -> Rules:
-    with path.open() as f:
+    # Default text encoding on Windows is cp1252, which crashes on any non-ASCII
+    # byte in layer_rules.yaml (Catalan/Spanish layer names). Force UTF-8.
+    with path.open(encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if "rules" not in data or not isinstance(data["rules"], list):
         raise ValueError("layer_rules.yaml: missing or malformed 'rules' list")
